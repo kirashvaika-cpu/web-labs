@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Заявка в техпідтримку — Варіант 9</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>Заявка в техпідтримку (Варіант №9)</h1>
+        <h2 id="formTitle">Створити нову заявку</h2>
+    </header>
+
+    <form id="createForm">
+        <input type="hidden" id="editId">
+
+        <div class="field">
+            <label for="subjectInput">Тема</label>
+            <input type="text" id="subjectInput" placeholder="Напр., Не працює пошта">
+            <div class="error-text" id="subjectError"></div>
+        </div>
+
+        <div class="field">
+            <label for="statusSelect">Статус</label>
+            <select id="statusSelect">
+                <option value="">Оберіть статус</option>
+                <option value="Нова">Нова</option>
+                <option value="В роботі">В роботі</option>
+                <option value="Закрита">Закрита</option>
+            </select>
+            <div class="error-text" id="statusError"></div>
+        </div>
+
+        <div class="field">
+            <label for="prioritySelect">Пріоритет</label>
+            <select id="prioritySelect">
+                <option value="">Оберіть пріоритет</option>
+                <option value="Низький">Низький</option>
+                <option value="Середній">Середній</option>
+                <option value="Високий">Високий</option>
+            </select>
+            <div class="error-text" id="priorityError"></div>
+        </div>
+
+        <div class="field">
+            <label for="authorInput">Автор</label>
+            <input type="text" id="authorInput" placeholder="Ваше ім'я">
+            <div class="error-text" id="authorError"></div>
+        </div>
+
+        <div class="field">
+            <label for="messageInput">Повідомлення</label>
+            <textarea id="messageInput" rows="4" placeholder="Опишіть вашу проблему..."></textarea>
+            <div class="error-text" id="messageError"></div>
+        </div>
+
+        <div class="buttons">
+            <button type="submit" id="submitBtn">Надіслати</button>
+            <button type="button" id="resetBtn">Очистити</button>
+        </div>
+    </form>
+
+    <hr style="margin: 40px 0; border: 0; border-top: 1px solid #eee;">
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2>Список заявок</h2>
+        <input type="text" id="searchInput" placeholder="Пошук за темою..." style="width: 250px;">
+    </div>
+
+    <table>
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>Тема</th>
+            <th>Статус</th>
+            <th>Пріор.</th>
+            <th>Автор</th>
+            <th>Дії</th>
+        </tr>
+        </thead>
+        <tbody id="itemsTableBody">
+        </tbody>
+    </table>
+</div>
+<script src="app.js" defer></script>
+</body>
+</html>
