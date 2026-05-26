@@ -1,30 +1,50 @@
+// src/repositories/ticketMessages.repository.ts
 import { v4 as uuidv4 } from "uuid";
-import { TicketMessageEntity } from "../models";
+import { all, get, run, esc } from "../db/dbClient";
+import { TicketMessage, TicketMessageWithAuthor, CreateMessageDto } from "../models/models";
 
-const store = new Map<string, TicketMessageEntity>();
+export async function findByTicket(ticketId: string): Promise<TicketMessageWithAuthor[]> {
+  return await all<TicketMessageWithAuthor>(`
+    SELECT
+      m.id, m.ticketId, m.authorId, m.text, m.createdAt,
+      u.name  AS authorName,
+      u.email AS authorEmail
+    FROM TicketMessages m
+    JOIN Users u ON u.id = m.authorId
+    WHERE m.ticketId = '${esc(ticketId)}'
+    ORDER BY m.createdAt ASC;
+  `);
+}
 
-export const ticketMessagesRepository = {
-  getByTicketId(ticketId: string): TicketMessageEntity[] {
-    return Array.from(store.values()).filter((m) => m.ticketId === ticketId);
-  },
+export async function findById(id: string): Promise<TicketMessage | undefined> {
+  return await get<TicketMessage>(`
+    SELECT id, ticketId, authorId, text, createdAt
+    FROM TicketMessages
+    WHERE id = '${esc(id)}';
+  `);
+}
 
-  getById(id: string): TicketMessageEntity | undefined {
-    return store.get(id);
-  },
+export async function create(ticketId: string, dto: CreateMessageDto): Promise<TicketMessageWithAuthor> {
+  const id  = uuidv4();
+  const now = new Date().toISOString();
 
-  add(data: Omit<TicketMessageEntity, "id" | "createdAt">): TicketMessageEntity {
-    const entity: TicketMessageEntity = {
-      id: uuidv4(),
-      createdAt: new Date().toISOString(),
-      ...data,
-    };
-    store.set(entity.id, entity);
-    return entity;
-  },
+  await run(`
+    INSERT INTO TicketMessages (id, ticketId, authorId, text, createdAt)
+    VALUES ('${id}', '${esc(ticketId)}', '${esc(dto.authorId)}', '${esc(dto.text)}', '${now}');
+  `);
 
-  deleteByTicketId(ticketId: string): void {
-    for (const [id, msg] of store.entries()) {
-      if (msg.ticketId === ticketId) store.delete(id);
-    }
-  },
-};
+  return (await get<TicketMessageWithAuthor>(`
+    SELECT
+      m.id, m.ticketId, m.authorId, m.text, m.createdAt,
+      u.name  AS authorName,
+      u.email AS authorEmail
+    FROM TicketMessages m
+    JOIN Users u ON u.id = m.authorId
+    WHERE m.id = '${esc(id)}';
+  `))!;
+}
+
+export async function remove(id: string): Promise<boolean> {
+  const result = await run(`DELETE FROM TicketMessages WHERE id = '${esc(id)}';`);
+  return result.changes > 0;
+}

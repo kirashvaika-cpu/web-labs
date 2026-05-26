@@ -1,29 +1,51 @@
+// src/middleware/errorHandler.ts
 import { Request, Response, NextFunction } from "express";
-import { ApiError } from "./ApiError";
 
 export function errorHandler(
   err: unknown,
-  req: Request,
+  _req: Request,
   res: Response,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _next: NextFunction
 ): void {
-  if (err instanceof ApiError) {
-    res.status(err.status).json({
-      error: {
-        code: err.code,
-        message: err.message,
-        ...(err.details ? { details: err.details } : {}),
-      },
+  const msg = String((err as Error)?.message ?? err);
+
+  // UNIQUE constraint → 409
+  if (msg.includes("UNIQUE constraint failed")) {
+    const field = msg.split("UNIQUE constraint failed: ")[1] ?? "field";
+    res.status(409).json({
+      error: { code: "CONFLICT", message: `Duplicate value: ${field}` },
     });
     return;
   }
 
-  console.error("Unhandled error:", err);
+  // NOT NULL constraint → 400
+  if (msg.includes("NOT NULL constraint failed")) {
+    const field = msg.split("NOT NULL constraint failed: ")[1] ?? "field";
+    res.status(400).json({
+      error: { code: "VALIDATION_ERROR", message: `Required field missing: ${field}` },
+    });
+    return;
+  }
+
+  // CHECK constraint → 400
+  if (msg.includes("CHECK constraint failed")) {
+    res.status(400).json({
+      error: { code: "VALIDATION_ERROR", message: "Invalid value (CHECK constraint failed)" },
+    });
+    return;
+  }
+
+  // FOREIGN KEY → 422
+  if (msg.includes("FOREIGN KEY constraint failed")) {
+    res.status(422).json({
+      error: { code: "REFERENCE_ERROR", message: "Referenced entity does not exist" },
+    });
+    return;
+  }
+
+  // Решта → 500
+  console.error("[ERROR]", err);
   res.status(500).json({
-    error: {
-      code: "INTERNAL_ERROR",
-      message: "Внутрішня помилка сервера",
-    },
+    error: { code: "INTERNAL_ERROR", message: "Internal Server Error" },
   });
 }
