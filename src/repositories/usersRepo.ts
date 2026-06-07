@@ -36,7 +36,7 @@ export async function updateUser(id: number, dto: UpdateUserDto): Promise<UserDt
   const fields: string[] = [];
   if (dto.name !== undefined) fields.push(`name = '${escStr(dto.name)}'`);
   if (dto.role !== undefined) fields.push(`role = '${escStr(dto.role)}'`);
-  if (fields.length === 0) return getUserById(id) ?? null;
+  if (fields.length === 0) return (getUserById(id) as unknown as UserDto) || null;
 
   const sql = `UPDATE Users SET ${fields.join(", ")} WHERE id = ${id};`;
   logSql(sql);

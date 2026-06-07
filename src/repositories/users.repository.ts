@@ -6,15 +6,16 @@ import { User, CreateUserDto, UpdateUserDto, UserRole } from "../models/models";
 const VALID_ROLES: UserRole[] = ["student", "teacher", "admin", "support"];
 
 export async function findAll(
-  role?:  string,
-  sort:   string = "createdAt",
-  order:  string = "desc"
+  role?: string,
+  sort: string = "createdAt",
+  order: string = "desc"
 ): Promise<User[]> {
-  const allowedSort  = ["id", "name", "email", "role", "createdAt"].includes(sort) ? sort : "createdAt";
+  const allowedSort = ["id", "name", "email", "role", "createdAt"].includes(sort)
+    ? sort
+    : "createdAt";
   const allowedOrder = order.toLowerCase() === "asc" ? "ASC" : "DESC";
 
-  const where = role && VALID_ROLES.includes(role as UserRole)
-    ? `WHERE role = '${esc(role)}'` : "";
+  const where = role && VALID_ROLES.includes(role as UserRole) ? `WHERE role = '${esc(role)}'` : "";
 
   return await all<User>(`
     SELECT id, name, email, role, createdAt
@@ -33,9 +34,9 @@ export async function findById(id: string): Promise<User | undefined> {
 }
 
 export async function create(dto: CreateUserDto): Promise<User> {
-  const id   = uuidv4();
+  const id = uuidv4();
   const role = dto.role ?? "student";
-  const now  = new Date().toISOString();
+  const now = new Date().toISOString();
 
   await run(`
     INSERT INTO Users (id, name, email, role, createdAt)

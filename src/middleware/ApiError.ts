@@ -1,16 +1,14 @@
-import { ErrorDetail } from "../dtos";
+interface ErrorDetail {
+  field: string;
+  message: string;
+}
 
 export class ApiError extends Error {
   status: number;
   code: string;
   details: ErrorDetail[] | null;
 
-  constructor(
-    status: number,
-    code: string,
-    message: string,
-    details: ErrorDetail[] | null = null
-  ) {
+  constructor(status: number, code: string, message: string, details: ErrorDetail[] | null = null) {
     super(message);
     this.name = "ApiError";
     this.status = status;

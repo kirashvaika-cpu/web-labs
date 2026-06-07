@@ -1,11 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 
-export function errorHandler(
-  err: unknown,
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void {
+export function errorHandler(err: unknown, req: Request, res: Response, next: NextFunction): void {
   const msg = String(err && (err as Error).message ? (err as Error).message : err);
 
   if (msg.includes("UNIQUE constraint failed")) {

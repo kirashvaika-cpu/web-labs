@@ -24,8 +24,11 @@ export async function findById(id: string): Promise<TicketMessage | undefined> {
   `);
 }
 
-export async function create(ticketId: string, dto: CreateMessageDto): Promise<TicketMessageWithAuthor> {
-  const id  = uuidv4();
+export async function create(
+  ticketId: string,
+  dto: CreateMessageDto
+): Promise<TicketMessageWithAuthor> {
+  const id = uuidv4();
   const now = new Date().toISOString();
 
   await run(`

@@ -1,10 +1,5 @@
 import { all, get, run, logSql } from "../db/dbClient";
-import {
-  TicketDto,
-  TicketWithAuthorDto,
-  CreateTicketDto,
-  UpdateTicketDto,
-} from "../dtos";
+import { TicketDto, TicketWithAuthorDto, CreateTicketDto, UpdateTicketDto } from "../dtos";
 
 function escStr(s: unknown): string {
   return String(s ?? "").replace(/'/g, "''");

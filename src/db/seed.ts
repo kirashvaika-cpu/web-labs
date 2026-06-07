@@ -18,7 +18,10 @@ async function seed(): Promise<void> {
   // ── Users ──────────────────────────────────────────────────────────────
   console.log("[seed] Inserting users...");
 
-  const u1 = uuidv4(), u2 = uuidv4(), u3 = uuidv4(), u4 = uuidv4();
+  const u1 = uuidv4(),
+    u2 = uuidv4(),
+    u3 = uuidv4(),
+    u4 = uuidv4();
 
   await run(`INSERT INTO Users (id, name, email, role, createdAt) VALUES
     ('${u1}', 'Іванов Іван', 'ivan@example.com', 'student', '${now}');`);
@@ -32,7 +35,11 @@ async function seed(): Promise<void> {
   // ── Tickets ────────────────────────────────────────────────────────────
   console.log("[seed] Inserting tickets...");
 
-  const t1 = uuidv4(), t2 = uuidv4(), t3 = uuidv4(), t4 = uuidv4(), t5 = uuidv4();
+  const t1 = uuidv4(),
+    t2 = uuidv4(),
+    t3 = uuidv4(),
+    t4 = uuidv4(),
+    t5 = uuidv4();
 
   await run(`INSERT INTO Tickets (id, subject, message, priority, status, authorId, createdAt, updatedAt) VALUES
     ('${t1}', 'Не працює принтер', 'Принтер у кімнаті 302 не друкує з понеділка', 'High', 'Open', '${u1}', '${now}', '${now}');`);

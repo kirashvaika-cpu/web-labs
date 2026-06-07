@@ -1,9 +1,11 @@
 // src/db/migrate.ts
-import fs   from "fs";
+import fs from "fs";
 import path from "path";
 import { run, all, esc } from "./dbClient";
 
-interface MigrationRow { filename: string }
+interface MigrationRow {
+  filename: string;
+}
 
 export async function migrate(): Promise<void> {
   // Увімкнути перевірку зовнішніх ключів (у SQLite вимкнено за замовчуванням)
@@ -24,7 +26,7 @@ export async function migrate(): Promise<void> {
     .filter((f) => /^\d+_.+\.sql$/.test(f))
     .sort(); // гарантований порядок: 001_, 002_, ...
 
-  const applied    = await all<MigrationRow>("SELECT filename FROM schema_migrations;");
+  const applied = await all<MigrationRow>("SELECT filename FROM schema_migrations;");
   const appliedSet = new Set(applied.map((r) => r.filename));
 
   for (const file of files) {

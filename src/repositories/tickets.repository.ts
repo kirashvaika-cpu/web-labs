@@ -2,34 +2,53 @@
 import { v4 as uuidv4 } from "uuid";
 import { all, get, run, esc } from "../db/dbClient";
 import {
-  Ticket, TicketWithAuthor, CreateTicketDto, UpdateTicketDto,
-  TicketStats, TicketStatus, TicketPriority,
+  Ticket,
+  TicketWithAuthor,
+  CreateTicketDto,
+  UpdateTicketDto,
+  TicketStats,
+  TicketStatus,
+  TicketPriority,
 } from "../models/models";
 
-const VALID_STATUSES:   TicketStatus[]   = ["Open", "InProgress", "Resolved", "Closed"];
+const VALID_STATUSES: TicketStatus[] = ["Open", "InProgress", "Resolved", "Closed"];
 const VALID_PRIORITIES: TicketPriority[] = ["Low", "Medium", "High"];
 
 export async function findAll(opts: {
-  status?:   string;
+  status?: string;
   priority?: string;
   authorId?: string;
-  sortBy?:   string;
-  sortDir?:  string;
-  page?:     number;
+  sortBy?: string;
+  sortDir?: string;
+  page?: number;
   pageSize?: number;
 }): Promise<TicketWithAuthor[]> {
-  const { status, priority, authorId, sortBy = "createdAt", sortDir = "desc", page = 1, pageSize = 20 } = opts;
+  const {
+    status,
+    priority,
+    authorId,
+    sortBy = "createdAt",
+    sortDir = "desc",
+    page = 1,
+    pageSize = 20,
+  } = opts;
 
-  const allowedSort  = ["id", "createdAt", "updatedAt", "priority", "status", "subject"].includes(sortBy) ? sortBy : "createdAt";
+  const allowedSort = ["id", "createdAt", "updatedAt", "priority", "status", "subject"].includes(
+    sortBy
+  )
+    ? sortBy
+    : "createdAt";
   const allowedOrder = sortDir.toLowerCase() === "asc" ? "ASC" : "DESC";
 
   const conds: string[] = [];
-  if (status   && VALID_STATUSES.includes(status as TicketStatus))     conds.push(`t.status   = '${esc(status)}'`);
-  if (priority && VALID_PRIORITIES.includes(priority as TicketPriority)) conds.push(`t.priority = '${esc(priority)}'`);
-  if (authorId)                                                         conds.push(`t.authorId = '${esc(authorId)}'`);
+  if (status && VALID_STATUSES.includes(status as TicketStatus))
+    conds.push(`t.status   = '${esc(status)}'`);
+  if (priority && VALID_PRIORITIES.includes(priority as TicketPriority))
+    conds.push(`t.priority = '${esc(priority)}'`);
+  if (authorId) conds.push(`t.authorId = '${esc(authorId)}'`);
 
-  const where  = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
-  const limit  = Math.min(Number(pageSize) || 20, 100);
+  const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
+  const limit = Math.min(Number(pageSize) || 20, 100);
   const offset = (Math.max(Number(page) || 1, 1) - 1) * limit;
 
   return await all<TicketWithAuthor>(`
@@ -60,7 +79,7 @@ export async function findById(id: string): Promise<TicketWithAuthor | undefined
 }
 
 export async function create(dto: CreateTicketDto): Promise<TicketWithAuthor> {
-  const id  = uuidv4();
+  const id = uuidv4();
   const now = new Date().toISOString();
   const priority = dto.priority ?? "Medium";
 
@@ -84,10 +103,10 @@ export async function update(id: string, dto: UpdateTicketDto): Promise<TicketWi
   const now = new Date().toISOString();
   const fields: string[] = [`updatedAt = '${now}'`];
 
-  if (dto.subject  !== undefined) fields.push(`subject  = '${esc(dto.subject)}'`);
-  if (dto.message  !== undefined) fields.push(`message  = '${esc(dto.message)}'`);
+  if (dto.subject !== undefined) fields.push(`subject  = '${esc(dto.subject)}'`);
+  if (dto.message !== undefined) fields.push(`message  = '${esc(dto.message)}'`);
   if (dto.priority !== undefined) fields.push(`priority = '${esc(dto.priority)}'`);
-  if (dto.status   !== undefined) fields.push(`status   = '${esc(dto.status)}'`);
+  if (dto.status !== undefined) fields.push(`status   = '${esc(dto.status)}'`);
 
   const result = await run(`
     UPDATE Tickets SET ${fields.join(", ")} WHERE id = '${esc(id)}';
@@ -104,27 +123,45 @@ export async function remove(id: string): Promise<boolean> {
 // ─── JOIN + Агрегація ─────────────────────────────────────────────────────────
 
 export async function getStats(): Promise<TicketStats> {
-  interface TotalRow    { total: number }
-  interface StatusRow   { status: string; cnt: number }
-  interface PriorRow    { priority: string; cnt: number }
-  interface AvgRow      { avg: number | null }
+  interface TotalRow {
+    total: number;
+  }
+  interface StatusRow {
+    status: string;
+    cnt: number;
+  }
+  interface PriorRow {
+    priority: string;
+    cnt: number;
+  }
+  interface AvgRow {
+    avg: number | null;
+  }
 
-  const [totalRow]   = await all<TotalRow>   ("SELECT COUNT(*) AS total FROM Tickets;");
-  const statusRows   = await all<StatusRow>  ("SELECT status,   COUNT(*) AS cnt FROM Tickets GROUP BY status;");
-  const priorityRows = await all<PriorRow>   ("SELECT priority, COUNT(*) AS cnt FROM Tickets GROUP BY priority;");
-  const [avgRow]     = await all<AvgRow>(`
+  const [totalRow] = await all<TotalRow>("SELECT COUNT(*) AS total FROM Tickets;");
+  const statusRows = await all<StatusRow>(
+    "SELECT status,   COUNT(*) AS cnt FROM Tickets GROUP BY status;"
+  );
+  const priorityRows = await all<PriorRow>(
+    "SELECT priority, COUNT(*) AS cnt FROM Tickets GROUP BY priority;"
+  );
+  const [avgRow] = await all<AvgRow>(`
     SELECT AVG(cnt) AS avg FROM (
       SELECT COUNT(*) AS cnt FROM TicketMessages GROUP BY ticketId
     );
   `);
 
-  const byStatus: Record<string, number>   = {};
+  const byStatus: Record<string, number> = {};
   const byPriority: Record<string, number> = {};
-  statusRows  .forEach((r) => { byStatus[r.status]      = r.cnt; });
-  priorityRows.forEach((r) => { byPriority[r.priority]  = r.cnt; });
+  statusRows.forEach((r) => {
+    byStatus[r.status] = r.cnt;
+  });
+  priorityRows.forEach((r) => {
+    byPriority[r.priority] = r.cnt;
+  });
 
   return {
-    total:               totalRow?.total ?? 0,
+    total: totalRow?.total ?? 0,
     byStatus,
     byPriority,
     avgMessagesPerTicket: Math.round((avgRow?.avg ?? 0) * 100) / 100,

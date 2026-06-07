@@ -1,43 +1,73 @@
-import { ticketMessagesRepository } from "../repositories/ticketMessages.repository";
-import { ticketsRepository } from "../repositories/tickets.repository";
-import { usersRepository } from "../repositories/users.repository";
+import * as ticketMessagesRepoModule from "../repositories/ticketMessagesRepo";
+import * as ticketsRepoModule from "../repositories/ticketsRepo";
+import * as usersRepoModule from "../repositories/usersRepo";
 import { ApiError } from "../middleware/ApiError";
 import { requireString, collectErrors } from "../middleware/validation";
-import {
-  CreateTicketMessageRequestDto,
-  TicketMessageResponseDto,
-  ListResponseDto,
-} from "../dtos";
+import { CreateMessageDto, ListResponse } from "../dtos";
 import { TicketMessageEntity } from "../models";
 
-function toDto(e: TicketMessageEntity): TicketMessageResponseDto {
-  return { id: e.id, ticketId: e.ticketId, text: e.text, authorId: e.authorId, createdAt: e.createdAt };
+// Визначаємо типи для репозиторіїв, щоб уникнути 'any'
+interface ITicketRepo {
+  getById: (id: string | number) => unknown;
+}
+interface IUserRepo {
+  getById: (id: string | number) => unknown;
+}
+interface IMessageRepo {
+  getByTicketId: (id: string | number) => TicketMessageEntity[];
+  add: (data: unknown) => TicketMessageEntity;
+}
+
+const ticketMessagesRepo = ticketMessagesRepoModule as unknown as IMessageRepo;
+const ticketsRepo = ticketsRepoModule as unknown as ITicketRepo;
+const usersRepo = usersRepoModule as unknown as IUserRepo;
+
+interface MessageResponse {
+  id: number;
+  ticketId: number;
+  text: string;
+  authorId: number;
+  createdAt: Date;
+}
+
+function toDto(e: TicketMessageEntity): MessageResponse {
+  return {
+    id: Number(e.id),
+    ticketId: Number(e.ticketId),
+    text: e.text,
+    authorId: Number(e.authorId),
+    createdAt: new Date(e.createdAt),
+  };
 }
 
 export const ticketMessagesService = {
-  getByTicketId(ticketId: string): ListResponseDto<TicketMessageResponseDto> {
-    if (!ticketsRepository.getById(ticketId)) throw ApiError.notFound("Тікет");
-    const items = ticketMessagesRepository.getByTicketId(ticketId);
-    return { items: items.map(toDto), total: items.length };
+  getByTicketId(ticketId: string): ListResponse<MessageResponse> {
+    if (!ticketsRepo.getById(ticketId)) throw ApiError.notFound("Тікет");
+    const items = ticketMessagesRepo.getByTicketId(ticketId);
+
+    return {
+      data: items.map(toDto),
+      meta: { count: items.length },
+    };
   },
 
-  create(ticketId: string, dto: CreateTicketMessageRequestDto): TicketMessageResponseDto {
-    if (!ticketsRepository.getById(ticketId)) throw ApiError.notFound("Тікет");
+  create(ticketId: string, dto: CreateMessageDto): MessageResponse {
+    if (!ticketsRepo.getById(ticketId)) throw ApiError.notFound("Тікет");
 
     const errors = collectErrors([
       requireString(dto.text, "text", 1, 2000),
-      requireString(dto.authorId, "authorId", 1),
+      requireString(String(dto.authorId), "authorId", 1),
     ]);
     if (errors.length > 0) throw ApiError.validationError(errors);
 
-    if (!usersRepository.getById(dto.authorId)) {
+    if (!usersRepo.getById(dto.authorId)) {
       throw ApiError.badRequest("Автор (authorId) не знайдений");
     }
 
-    const entity = ticketMessagesRepository.add({
-      ticketId,
+    const entity = ticketMessagesRepo.add({
+      ticketId: Number(ticketId),
       text: dto.text.trim(),
-      authorId: dto.authorId,
+      authorId: Number(dto.authorId),
     });
     return toDto(entity);
   },

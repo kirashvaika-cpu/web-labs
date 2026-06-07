@@ -6,7 +6,7 @@ export interface RunResult {
   changes: number;
 }
 
-function logSql(sql: string): void {
+export function logSql(sql: string): void {
   if (process.env.NODE_ENV !== "production") {
     console.log("[SQL]", sql.replace(/\s+/g, " ").trim());
   }

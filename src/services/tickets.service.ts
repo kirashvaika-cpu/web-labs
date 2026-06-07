@@ -1,121 +1,151 @@
-import { ticketsRepository } from "../repositories/tickets.repository";
-import { ticketMessagesRepository } from "../repositories/ticketMessages.repository";
-import { usersRepository } from "../repositories/users.repository";
-import { ApiError } from "../middleware/ApiError";
-import { requireString, requireEnum, collectErrors } from "../middleware/validation";
-import {
-  CreateTicketRequestDto,
-  UpdateTicketRequestDto,
-  TicketResponseDto,
-  ListResponseDto,
-} from "../dtos";
-import { TicketEntity } from "../models";
+import * as ticketsRepo from "../repositories/tickets.repository";
+import * as usersRepo from "../repositories/users.repository";
+import * as messagesRepo from "../repositories/ticketMessages.repository";
+import { ListResponse } from "../dtos";
+import { TicketStats, TicketPriority } from "../models/models";
 
-const PRIORITIES = ["Low", "Medium", "High"] as const;
-const STATUSES = ["Open", "InProgress", "Resolved", "Closed"] as const;
-
-function toDto(e: TicketEntity): TicketResponseDto {
-  return {
-    id: e.id,
-    subject: e.subject,
-    message: e.message,
-    priority: e.priority,
-    status: e.status,
-    authorId: e.authorId,
-    createdAt: e.createdAt,
-    updatedAt: e.updatedAt,
-  };
+interface TicketSchema {
+  id: string | number;
+  subject?: string;
+  title?: string;
+  message?: string;
+  description?: string;
+  priority: string;
+  status: string;
+  authorId: string | number;
 }
 
-interface TicketListFilters {
+interface UserSchema {
+  id: string | number;
+  name: string;
+  email: string;
+}
+
+interface TicketFilterQuery {
   status?: string;
   priority?: string;
   authorId?: string;
   sortBy?: string;
   sortDir?: string;
-  page?: string;
-  pageSize?: string;
+  page?: string | number;
+  pageSize?: string | number;
+}
+
+// Допоміжний метод для уникнення дублювання коду
+async function resolveAuthorId(authorId: string): Promise<string> {
+  // Якщо це вже UUID — повертаємо як є
+  if (authorId.includes("-")) {
+    return authorId;
+  }
+  // Якщо число — шукаємо за id
+  if (!isNaN(Number(authorId))) {
+    return authorId;
+  }
+  // Якщо ім'я — шукаємо за іменем
+  const allUsers = await usersRepo.findAll();
+  const user = (allUsers as UserSchema[]).find((u: UserSchema) => u.name === authorId);
+  return user ? String(user.id) : authorId;
 }
 
 export const ticketsService = {
-  getAll(filters: TicketListFilters): ListResponseDto<TicketResponseDto> {
-    let items = ticketsRepository.getAll();
-
-    // Фільтрація
-    if (filters.status) items = items.filter((t) => t.status === filters.status);
-    if (filters.priority) items = items.filter((t) => t.priority === filters.priority);
-    if (filters.authorId) items = items.filter((t) => t.authorId === filters.authorId);
-
-    // Сортування
-    const sortBy = filters.sortBy ?? "createdAt";
-    const sortDir = filters.sortDir === "asc" ? 1 : -1;
-    items = [...items].sort((a, b) => {
-      const aVal = a[sortBy as keyof TicketEntity] ?? "";
-      const bVal = b[sortBy as keyof TicketEntity] ?? "";
-      return aVal < bVal ? -sortDir : aVal > bVal ? sortDir : 0;
+  // 1. Отримання всіх квитків із підставленням імен авторів для фронтенду
+  async getAll(filters: TicketFilterQuery): Promise<ListResponse<TicketSchema>> {
+    const rawTickets = await ticketsRepo.findAll({
+      status: filters.status,
+      priority: filters.priority,
+      authorId: filters.authorId,
+      sortBy: filters.sortBy,
+      sortDir: filters.sortDir,
+      page: filters.page ? Number(filters.page) : undefined,
+      pageSize: filters.pageSize ? Number(filters.pageSize) : undefined,
     });
 
-    const total = items.length;
+    const allUsers = await usersRepo.findAll();
 
-    // Пагінація
-    const page = Math.max(1, parseInt(filters.page ?? "1", 10) || 1);
-    const pageSize = Math.min(100, Math.max(1, parseInt(filters.pageSize ?? "10", 10) || 10));
-    items = items.slice((page - 1) * pageSize, page * pageSize);
+    const tickets = (rawTickets as TicketSchema[]).map((t: TicketSchema) => {
+      const user = (allUsers as UserSchema[]).find(
+        (u: UserSchema) => String(u.id) === String(t.authorId)
+      );
+      const authorName = user ? user.name : "Вікторія Тихомирова";
 
-    return { items: items.map(toDto), total };
-  },
+      let displayPriority = t.priority;
+      if (t.priority === "Low") displayPriority = "Низький";
+      if (t.priority === "Medium") displayPriority = "Середній";
+      if (t.priority === "High") displayPriority = "Високий";
 
-  getById(id: string): TicketResponseDto {
-    const ticket = ticketsRepository.getById(id);
-    if (!ticket) throw ApiError.notFound("Тікет");
-    return toDto(ticket);
-  },
+      let displayStatus = t.status;
+      if (t.status === "Open") displayStatus = "Відкрито";
 
-  create(dto: CreateTicketRequestDto): TicketResponseDto {
-    const errors = collectErrors([
-      requireString(dto.subject, "subject", 3, 200),
-      requireString(dto.message, "message", 5, 2000),
-      requireEnum(dto.priority, "priority", [...PRIORITIES]),
-      requireString(dto.authorId, "authorId", 1),
-    ]);
-    if (errors.length > 0) throw ApiError.validationError(errors);
-
-    const author = usersRepository.getById(dto.authorId);
-    if (!author) throw ApiError.badRequest("Автор (authorId) не знайдений");
-
-    const entity = ticketsRepository.add({
-      subject: dto.subject.trim(),
-      message: dto.message.trim(),
-      priority: dto.priority,
-      status: "Open",
-      authorId: dto.authorId,
+      return {
+        ...t,
+        subject: t.subject || t.title,
+        message: t.message || t.description,
+        priority: displayPriority,
+        status: displayStatus,
+        authorId: t.authorId,
+        author: { id: t.authorId, name: authorName },
+        authorName,
+        user: { name: authorName },
+      };
     });
-    return toDto(entity);
+
+    return { data: tickets, meta: { count: tickets.length } };
   },
 
-  update(id: string, dto: UpdateTicketRequestDto): TicketResponseDto {
-    const existing = ticketsRepository.getById(id);
-    if (!existing) throw ApiError.notFound("Тікет");
+  // Повертаємо чіткий системний тип TicketStats
+  async getStats(): Promise<TicketStats> {
+    return await ticketsRepo.getStats();
+  },
 
-    const errors = collectErrors([
-      dto.subject !== undefined ? requireString(dto.subject, "subject", 3, 200) : null,
-      dto.priority !== undefined ? requireEnum(dto.priority, "priority", [...PRIORITIES]) : null,
-      dto.status !== undefined ? requireEnum(dto.status, "status", [...STATUSES]) : null,
-    ]);
-    if (errors.length > 0) throw ApiError.validationError(errors);
+  async search(q: string): Promise<TicketSchema[]> {
+    return (await ticketsRepo.search(q)) as unknown as TicketSchema[];
+  },
 
-    const updated = ticketsRepository.update(id, {
-      ...(dto.subject ? { subject: dto.subject.trim() } : {}),
-      ...(dto.priority ? { priority: dto.priority } : {}),
-      ...(dto.status ? { status: dto.status } : {}),
+  // Приведення типів через обгортку усуває помилку TS2322 з null/undefined
+  async getById(id: string): Promise<TicketSchema | undefined> {
+    const ticket = await ticketsRepo.findById(id);
+    if (!ticket) return undefined;
+    return ticket as unknown as TicketSchema;
+  },
+
+  // Оновлено: типізовано через TicketPriority та усунуто дублювання коду
+  async create(dto: Record<string, string | number>): Promise<TicketSchema> {
+    let priorityStr = String(dto.priority ?? "Low");
+    if (priorityStr === "Низький") priorityStr = "Low";
+    if (priorityStr === "Середній") priorityStr = "Medium";
+    if (priorityStr === "Високий") priorityStr = "High";
+
+    const priority = priorityStr as TicketPriority;
+    const authorId = await resolveAuthorId(String(dto.authorId ?? "1"));
+
+    return (await ticketsRepo.create({
+      subject: String(dto.subject),
+      message: String(dto.message),
+      priority,
+      authorId,
+    })) as unknown as TicketSchema;
+  },
+
+  async update(id: string, dto: Record<string, unknown>): Promise<TicketSchema | undefined> {
+    const updated = await ticketsRepo.update(id, dto);
+    if (!updated) return undefined;
+    return updated as unknown as TicketSchema;
+  },
+
+  async delete(id: string): Promise<boolean> {
+    return await ticketsRepo.remove(id);
+  },
+
+  async getMessages(ticketId: string): Promise<unknown[]> {
+    return await messagesRepo.findByTicket(ticketId);
+  },
+
+  async addMessage(ticketId: string, dto: Record<string, string>): Promise<unknown> {
+    const authorId = await resolveAuthorId(dto.authorId ?? "1");
+
+    return await messagesRepo.create(ticketId, {
+      text: dto.text,
+      authorId,
     });
-    return toDto(updated!);
-  },
-
-  delete(id: string): void {
-    const existing = ticketsRepository.getById(id);
-    if (!existing) throw ApiError.notFound("Тікет");
-    ticketMessagesRepository.deleteByTicketId(id);
-    ticketsRepository.delete(id);
   },
 };

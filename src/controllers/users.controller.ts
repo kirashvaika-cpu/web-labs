@@ -2,45 +2,48 @@ import { Request, Response, NextFunction } from "express";
 import { usersService } from "../services/users.service";
 
 export const usersController = {
-  getAll(req: Request, res: Response, next: NextFunction): void {
+  async getAll(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = usersService.getAll({ role: req.query.role as string | undefined });
+      const result = await usersService.getAll({
+        role: req.query.role as string | undefined,
+      });
+
       res.status(200).json(result);
     } catch (err) {
       next(err);
     }
   },
 
-  getById(req: Request, res: Response, next: NextFunction): void {
+  async getById(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = usersService.getById(req.params.id);
+      const result = await usersService.getById(req.params.id);
       res.status(200).json(result);
     } catch (err) {
       next(err);
     }
   },
 
-  create(req: Request, res: Response, next: NextFunction): void {
+  async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = usersService.create(req.body);
+      const result = await usersService.create(req.body);
       res.status(201).json(result);
     } catch (err) {
       next(err);
     }
   },
 
-  update(req: Request, res: Response, next: NextFunction): void {
+  async update(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = usersService.update(req.params.id, req.body);
+      const result = await usersService.update(req.params.id, req.body);
       res.status(200).json(result);
     } catch (err) {
       next(err);
     }
   },
 
-  delete(req: Request, res: Response, next: NextFunction): void {
+  async delete(req: Request, res: Response, next: NextFunction) {
     try {
-      usersService.delete(req.params.id);
+      await usersService.delete(req.params.id);
       res.status(204).send();
     } catch (err) {
       next(err);

@@ -1,4 +1,7 @@
-import { ErrorDetail } from "../dtos";
+interface ErrorDetail {
+  field: string;
+  message: string;
+}
 
 export function requireString(
   value: unknown,

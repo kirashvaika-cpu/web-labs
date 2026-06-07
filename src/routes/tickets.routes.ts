@@ -12,3 +12,4 @@ ticketsRouter.delete("/:id", ticketsController.delete);
 // Вкладені маршрути: повідомлення тікету
 ticketsRouter.get("/:id/messages", ticketsController.getMessages);
 ticketsRouter.post("/:id/messages", ticketsController.addMessage);
+export default Router;

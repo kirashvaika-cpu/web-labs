@@ -1,77 +1,77 @@
 // src/models/models.ts
 // Внутрішні моделі даних — повторюють структуру БД
 
-export type UserRole     = "student" | "teacher" | "admin" | "support";
+export type UserRole = "student" | "teacher" | "admin" | "support";
 export type TicketStatus = "Open" | "InProgress" | "Resolved" | "Closed";
 export type TicketPriority = "Low" | "Medium" | "High";
 
 export interface User {
-  id:        string;
-  name:      string;
-  email:     string;
-  role:      UserRole;
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
   createdAt: string;
 }
 
 export interface Ticket {
-  id:        string;
-  subject:   string;
-  message:   string;
-  priority:  TicketPriority;
-  status:    TicketStatus;
-  authorId:  string;
+  id: string;
+  subject: string;
+  message: string;
+  priority: TicketPriority;
+  status: TicketStatus;
+  authorId: string;
   createdAt: string;
   updatedAt: string;
 }
 
 /** Тікет з JOIN-даними автора */
 export interface TicketWithAuthor extends Ticket {
-  authorName:  string;
+  authorName: string;
   authorEmail: string;
 }
 
 export interface TicketMessage {
-  id:        string;
-  ticketId:  string;
-  authorId:  string;
-  text:      string;
+  id: string;
+  ticketId: string;
+  authorId: string;
+  text: string;
   createdAt: string;
 }
 
 export interface TicketMessageWithAuthor extends TicketMessage {
-  authorName:  string;
+  authorName: string;
   authorEmail: string;
 }
 
 // ─── DTO ─────────────────────────────────────────────────────────────────────
 
 export interface CreateUserDto {
-  name:  string;
+  name: string;
   email: string;
   role?: UserRole;
 }
 
 export interface UpdateUserDto {
-  name?:  string;
-  role?:  UserRole;
+  name?: string;
+  role?: UserRole;
 }
 
 export interface CreateTicketDto {
-  subject:  string;
-  message:  string;
+  subject: string;
+  message: string;
   priority?: TicketPriority;
   authorId: string;
 }
 
 export interface UpdateTicketDto {
-  subject?:   string;
-  message?:   string;
-  priority?:  TicketPriority;
-  status?:    TicketStatus;
+  subject?: string;
+  message?: string;
+  priority?: TicketPriority;
+  status?: TicketStatus;
 }
 
 export interface CreateMessageDto {
-  text:     string;
+  text: string;
   authorId: string;
 }
 
@@ -89,8 +89,8 @@ export interface ApiItem<T> {
 // ─── Aggregation ─────────────────────────────────────────────────────────────
 
 export interface TicketStats {
-  total:               number;
-  byStatus:            Record<string, number>;
-  byPriority:          Record<string, number>;
+  total: number;
+  byStatus: Record<string, number>;
+  byPriority: Record<string, number>;
   avgMessagesPerTicket: number;
 }
